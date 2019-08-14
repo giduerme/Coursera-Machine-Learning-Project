@@ -1,0 +1,124 @@
+---
+title: "Coursera: Program Machine Learning"
+author: "Gilbert Duerme"
+date: "August 14, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+###A. Overview
+This course project was made as fulfillment of the course requirements in the Practical Machine Learning course under Coursera. The course project was to create a practical machine learning model out of the datasets provided by Coursera. The description below were derived from the Coursera which will be the guide for this project.
+
+The goal of your project is to predict the manner in which certain group of people did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+
+###B. Data Preparation
+In this section, the needed datasets will be loaded as well as the packages that will be later used for modelling.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+# Load the needed packages for the whole project
+library(caret)
+library(randomForest)
+
+# Load the needed datasets for the whole project
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+
+# Display the data dimension of the training dataset
+dim(training)
+
+# Display the column names of the training dataset
+length(colnames(training))
+colnames(training)
+
+# Display the data dimension of the testing dataset
+dim(testing)
+
+# Display the column names of the testing dataset
+length(colnames(testing))
+colnames(testing)
+```
+
+
+###C. Data Cleaning
+In this section, the loaded datasets will undergo omission of unnecessary columns for the modeling process.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+#Drop the columns X, user_name, raw_timestamp_part_1, raw_timestamp_part_2, cvtd_timestamp, new_window, and num_window
+training <- training[, -c(1:7)]
+testing <- testing[, -c(1:7)]
+
+#Drop the columns consisting of 50% or more null values 
+dropcolumns <- which(colSums(is.na(training) |training == "") >= 0.5 * dim(training)[1]) 
+training <- training[, -dropcolumns]
+testing <- testing[, -dropcolumns]
+
+# Display the data dimension of the cleaned training dataset
+dim(training)
+
+# Display the column names of the cleaned training dataset
+length(colnames(training))
+colnames(training)
+
+# Display the data dimension of the cleaned training dataset
+dim(testing)
+
+# Display the column names of the cleaned training dataset
+length(colnames(testing))
+colnames(testing)
+```
+
+
+###D. Data Sampling
+In this section, the cleaned datasets Shall undergo splitting as part of the modelling process. The training dataset will be splitted into two, 70% for the model training dataset while the 30% will be for the model validation dataset.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+# Set seed for reproducibility purposes
+set.seed(2019)
+
+# Undergo a sampling process via data partition
+sampling <- createDataPartition(training$classe, p = 0.7, list = FALSE)
+mod_train <- training[sampling,]
+mod_validate <- training[-sampling,]
+
+# Display the data dimension of the mod_train
+dim(mod_train)
+
+# Display the data dimension of the mod_validate
+dim(mod_validate)
+```
+
+
+###E. Data Modeling
+After splitting the datasets, the training dataset will be undergoing the modeling process.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+# Undergo a model algorithm via 
+controlRF <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
+modRF <- train(classe ~ ., data = mod_train, method = "rf", trControl = controlRF)
+
+# Print the results of the random forest model 
+print(modRF)
+modRF$finalModel
+
+# Show variable importance
+Variable_Importance <- varImp(modRF)
+Variable_Importance
+```
+
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+# Use the validation dataset on the created model
+validate_modRF <- predict(modRF, newdata = mod_validate)
+validate_modRF_res <- confusionMatrix(validate_modRF, mod_validate$classe)
+validate_modRF_res
+```
+
+###F. Modeling Prediction
+After the modeling process was done for both the training and validate datasets, it is time for the test dataset to undergo the model.
+```{r, echo = TRUE, warning = FALSE, message = FALSE, cache = TRUE}
+Test_modRF <- predict(modRF, newdata = testing)
+Test_modRF
+```
+
+
